@@ -4,43 +4,185 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <!--name:名称空间-->
 <mapper namespace="com.itheima.mapper.BrandMapper">
-<!--
-数据库表的字段 和 实体类的属性名称不一样，则不能总动封装数据
-    *起别名：
-        *缺点：每次查询都需要写一次别名
-            *方法，引用sql片段
-                *缺点：不灵活
-    *resultMap
--->
-    
+    <!--
+    数据库表的字段 和 实体类的属性名称不一样，则不能总动封装数据
+        *起别名：
+            *缺点：每次查询都需要写一次别名
+                *方法，引用sql片段
+                    *缺点：不灵活
+        *resultMap
+    -->
+
     <resultMap id="brandResultMap" type="brand">
         <result column="brand_name" property="brandName"></result>
-<!--        <result column="company_name" property="companyName"></result>-->
+        <result column="company_name" property="companyName"></result>
     </resultMap>
 
+
     <select id="selectAll" resultMap="brandResultMap">
-            select
-                *
-            from tb_brand;
-        </select>
+        select *
+        from tb_brand;
+    </select>
 
+    <!--
+        sql片段
+    -->
 
-<!--
-    sql片段
--->
+    <!--    <sql id="brand_column">-->
+    <!--        id,brand_name as brandName,company_name as companyName,ordered,description,status-->
+    <!--    </sql>-->
 
-<!--    <sql id="brand_column">-->
-<!--        id,brand_name as brandName,company_name as compnayName,ordered,description,status-->
-<!--    </sql>-->
-
-<!--    <select id="selectAll" resultType="brand">-->
-<!--        select-->
-<!--            <include refid="brand_column"/>-->
-<!--        from tb_brand;-->
-<!--    </select>-->
+    <!--    <select id="selectAll" resultType="brand">-->
+    <!--        select-->
+    <!--            <include refid="brand_column"/>-->
+    <!--        from tb_brand;-->
+    <!--    </select>-->
 
     <!--    <select id="selectAll" resultType="brand">-->
     <!--        select *-->
     <!--        from tb_brand;-->
     <!--    </select>-->
+
+
+    <!--
+            *参数占位符：
+                    1.#{}：会将其替换为？，防止sql注入
+                    2。${}:拼sql，会存在sql注入
+                    3.使用时机：
+                        *参数传递的时候：#{}
+                        *${}表名或者列名不固定时使用，存在sql注入
+
+                    特殊字符处理：
+                        1.转义字符：&lt  (<号)
+                        2.CDATA区:  <![CDATA[ < ]]>  (输入CD后补全)
+
+    -->
+    <select id="selectById" resultMap="brandResultMap">
+        select *
+
+        from tb_brand
+        where id = #{id};
+    </select>
+
+    <!--
+        条件查询
+    -->
+    <!--    <select id="selectByCondition" resultMap="brandResultMap">-->
+    <!--        select *-->
+    <!--        from tb_brand-->
+    <!--        where-->
+    <!--             status = #{status}-->
+    <!--          and company_name like #{companyName}-->
+    <!--          and brand_name like #{brandName};-->
+    <!--    </select>-->
+
+    <!--
+        动态条件查询
+            *if 条件判断
+                *test：逻辑表达式
+            *问题：
+                *恒等式 + 后续所有sql语句开头都加and
+                *<where> 替换where关键字
+    -->
+    <select id="selectByCondition" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        <where>
+            <if test="status != null">
+                status = #{status}
+            </if>
+
+            <if test="companyName != null and companyName != ''">
+                and company_name like #{companyName}
+            </if>
+            <if test="brandName != null and brandName != ''">
+                and brand_name like #{brandName};
+            </if>
+        </where>
+    </select>
+
+    <!--单条件动态模糊查询-->
+    <select id="selectByConditionSingle" resultMap="brandResultMap">
+        select *
+        from tb_brand
+        <where>
+
+            <choose>
+                <when test="status != null">
+                    status = #{status}
+                </when>
+                <when test="companyName != null and companyName != ''">
+                    company_name like #{companyName}
+                </when>
+                <when test="brandName != null and brandName != ''">
+                    brand_name like #{brandName};
+                </when>
+            </choose>
+        </where>
+
+<!--        where-->
+<!--        <choose>-->
+<!--            <when test="status != null">-->
+<!--                status = #{status}-->
+<!--            </when>-->
+<!--            <when test="companyName != null and companyName != ''">-->
+<!--                company_name like #{companyName}-->
+<!--            </when>-->
+<!--            <when test="brandName != null and brandName != ''">-->
+<!--                brand_name like #{brandName};-->
+<!--            </when>-->
+<!--            <otherwise>-->
+<!--                1 = 1;-->
+<!--            </otherwise>-->
+<!--        </choose>-->
+    </select>
+
+
+    <!--添加-->
+    <insert id="add" useGeneratedKeys="true" keyProperty="id">
+        insert into tb_brand (brand_name, company_name, ordered, description, status)
+        values (#{brandName},#{companyName},#{ordered},#{description},#{status});
+    </insert>
+
+    <!--修改-->
+    <update id="update">
+        update tb_brand
+        <set>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="companyName != null and companyName != ''">
+                company_name = #{companyName},
+            </if>
+            <if test="brandName != null and brandName != ''">
+                brand_name = #{brandName},
+            </if>
+            <if test="description != null and description != ''">
+                description = #{description},
+            </if>
+            <if test="ordered != null">
+                ordered = #{ordered}
+            </if>
+        </set>
+        where
+            id = #{id};
+    </update>
+
+    <delete id="deleteById">
+        delete
+        from tb_brand
+        where
+            id = #{id};
+    </delete>
+
+    <delete id="deleteByIds">
+        delete
+        from tb_brand
+        where
+            id in
+                <foreach collection="ids" item="id" separator="," open="(" close=")">
+                    #{id}
+                </foreach>
+    </delete>
+
 </mapper>
